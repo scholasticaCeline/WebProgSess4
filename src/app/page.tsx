@@ -1,103 +1,151 @@
-import Image from "next/image";
+"use client"
+
+import { useState } from "react"
+import {
+  Sun,          
+  Cloud,        
+  CloudRain,    
+  CloudSnow,     
+  CloudLightning, 
+  Droplet,     
+  Wind,     
+  Search, 
+  AlertCircle
+} from 'lucide-react';
+
+
+type WeatherData = {
+  location: {
+    name: string
+    region: string
+    country: string
+  }
+  current: {
+    temperature: number
+    weather_descriptions: string[]
+    weather_icons: string[] // We'll still receive this but primarily use Lucide for UI
+  }
+}
+
+// Helper function to get Lucide icon component based on weather description
+const getWeatherIcon = (description: string) => {
+  const lowerDesc = description.toLowerCase();
+
+  if (lowerDesc.includes("clear") || lowerDesc.includes("sunny")) {
+    return <Sun className="text-orange-400" />;
+  } else if (lowerDesc.includes("cloud") || lowerDesc.includes("overcast")) {
+    return <Cloud className="text-gray-500" />;
+  } else if (lowerDesc.includes("rain") || lowerDesc.includes("drizzle") || lowerDesc.includes("shower")) {
+    return <CloudRain className="text-blue-500" />;
+  } else if (lowerDesc.includes("snow") || lowerDesc.includes("sleet")) {
+    return <CloudSnow className="text-blue-300" />;
+  } else if (lowerDesc.includes("thunder") || lowerDesc.includes("storm")) {
+    return <CloudLightning className="text-yellow-600" />;
+  } else if (lowerDesc.includes("mist") || lowerDesc.includes("fog")) {
+    return <Droplet className="text-gray-400" />; // Using droplet for mist/fog
+  } else if (lowerDesc.includes("wind")) {
+    return <Wind className="text-gray-600" />;
+  }
+  // Default fallback icon if no match
+  return <Cloud className="text-gray-400" />;
+};
+
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [city, setCity] = useState("")
+  const [weather, setWeather] = useState<WeatherData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [hasSearched, setHasSearched] = useState(false)
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const fetchWeather = async () => {
+    setHasSearched(true)
+    if (!city) {
+      setError("Please enter a city name.")
+      setWeather(null)
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setWeather(null)
+
+    try {
+      const res = await fetch(`/api/weather?city=${city}`)
+      const data = await res.json()
+
+      if (res.ok) {
+        if (data && data.location && data.current && data.current.weather_descriptions && data.current.weather_descriptions.length > 0) {
+          setWeather(data)
+        } else {
+          setError("Could not retrieve weather data or valid description for this city. Please try another.")
+          setWeather(null)
+        }
+      } else {
+        setError(data.error?.info || "Failed to fetch weather data.")
+        setWeather(null)
+      }
+    } catch (err) {
+      console.error("Fetch error:", err)
+      setError("An unexpected error occurred while fetching weather.")
+      setWeather(null)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-green-100 to-orange-200 flex flex-col items-center justify-center p-4 font-sans">
+      <h1 className="text-4xl font-extrabold mb-8 text-green-800 drop-shadow-md">Check ur Local Weather Here</h1>
+
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-200">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <input
+            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-400 focus:border-transparent transition duration-200 ease-in-out text-lg"
+            placeholder="Enter city name..."
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                fetchWeather()
+              }
+            }}
+          />
+          <button
+            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition duration-200 ease-in-out text-sm font-semibold"
+            onClick={fetchWeather}
+            disabled={loading}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {loading ? "Fetching..." : "Get Weather"}
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4 flex items-center" role="alert">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            <strong className="font-bold">Error!</strong>
+            <span className="block sm:inline ml-2">{error}</span>
+          </div>
+        )}
+
+        {weather && weather.current && weather.current.weather_descriptions && weather.current.weather_descriptions.length > 0 ? (
+          <div className="text-center mt-6">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">{weather.location.name}</h2>
+            <p className="text-gray-600 text-lg mb-4">{weather.location.region}, {weather.location.country}</p>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-20 h-20 mb-2 flex items-center justify-center">
+                {getWeatherIcon(weather.current.weather_descriptions.at(0) || "")}
+              </div>
+              <p className="text-5xl font-extrabold text-orange-700 mb-1">{weather.current.temperature}°C</p>
+              <p className="text-gray-700 text-xl font-medium capitalize">{weather.current.weather_descriptions.at(0)}</p>
+            </div>
+          </div>
+        ) : (
+          !loading && !error && !hasSearched && (
+            <div className="text-center text-gray-500 text-lg py-4 flex items-center justify-center">
+              <Search className="h-6 w-6 mr-2" /> Enter a city to see the weather.
+            </div>
+          )
+        )}
+      </div>
+    </main>
+  )
 }
